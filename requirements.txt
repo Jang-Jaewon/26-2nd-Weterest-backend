@@ -2,3 +2,5 @@ Django==3.2.8
 django-cors-headers==3.10.0
 mysqlclient==2.0.3
 PyMySQL==1.0.2
+django-seed==0.3.1
+psycopg2-binary==2.9.2
