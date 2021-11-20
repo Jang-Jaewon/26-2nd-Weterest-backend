@@ -9,6 +9,7 @@ class User(TimeStampModel):
     nickname            = models.CharField(max_length=30, unique=True)
     profile_image_url   = models.URLField(max_length=2000, null=True)
     login_platform      = models.CharField(max_length=30)
+    login_platform_id   = models.CharField(max_length=30)
     description         = models.TextField(null=True)
     pined_boards        = models.ManyToManyField('boards.Board', through="boards.PinBoard", related_name="users", null=True, blank=True)
     
