@@ -311,7 +311,7 @@ class PinListTestView(TestCase):
             )
         ]
         PinBoard.objects.bulk_create(pinboard_list)
-        
+
     def tearDown(self):
         User.objects.all().delete()
         Board.objects.all().delete()
@@ -321,7 +321,7 @@ class PinListTestView(TestCase):
         client  = Client()
         access_token1= jwt.encode({"id" : 1}, SECRET_KEY, algorithm = ALGORITHM)
         headers = {'HTTP_Authorization' : access_token1}
-        
+
         results = [{
             "id"                : 1,
             "nickname"          : "test1",
@@ -331,7 +331,7 @@ class PinListTestView(TestCase):
             "image_width"       : 1600,
             "image_height"      : 900,
         }]
-        
+
         response = client.get("/boards/pinlist", **headers)
         self.assertEqual(response.json(), {"pined_boards" : results})
         self.assertEqual(response.status_code, 200)
@@ -340,9 +340,167 @@ class PinListTestView(TestCase):
         client  = Client()
         access_token2= jwt.encode({"id" : 2}, SECRET_KEY, algorithm = ALGORITHM)
         headers = {'HTTP_Authorization' : access_token2}
-        
+
         results = []
 
         response = client.get("/boards/pinlist", **headers)
         self.assertEqual(response.json(), {"message" : "No Pin", "pined_boards" : results})
         self.assertEqual(response.status_code, 400)
+
+
+class MyBoardsViewTest(TestCase):
+    def setUp(self):
+        user_list = [
+            User(
+                id                = 1,
+                email             = 'test1@kakao.com',
+                password          = '1q2w3e4r!',
+                nickname          = 'test1',
+                profile_image_url = 'test_image_url1',
+                login_platform    = 'kakao',
+                login_platform_id = '0000000000',
+                description       = 'hi',
+            ),
+            User(
+                id                = 2,
+                email             = 'test2@kakao.com',
+                password          = '1q2w3e4r!',
+                nickname          = 'test2',
+                profile_image_url = 'test_image_url2',
+                login_platform    = 'kakao',
+                login_platform_id = '1111111111',
+                description       = 'hi',
+            ),
+        ]
+        User.objects.bulk_create(user_list)
+
+        user1 = User.objects.get(email='test1@kakao.com')
+        user2 = User.objects.get(email='test2@kakao.com')
+        self.token1 = jwt.encode({'id' : user1.id}, settings.SECRET_KEY, algorithm = settings.ALGORITHM)
+        self.token2 = jwt.encode({'id' : user2.id}, settings.SECRET_KEY, algorithm = settings.ALGORITHM)
+
+        board_list = [
+            Board(
+                id = 1,
+                title             = 'test title1',
+                description       = 'test description1',        
+                board_image_url   = 'test_url_1',
+                source            = 'test1.com',
+                image_point_color = '#e587a9',
+                image_width       = 1600,
+                image_height      = 900,    
+                user_id           = User.objects.get(id=1).id,   
+            ),
+            Board(
+                id = 2,
+                title             = 'test title2',
+                description       = 'test description1',        
+                board_image_url   = 'test_url_2',    
+                source            = 'test2.com',
+                image_point_color = '#bc80fc',
+                image_width       = 1600,
+                image_height      = 900,   
+                user_id = User.objects.get(id=1).id,   
+            ),
+        ]
+        Board.objects.bulk_create(board_list)
+
+        tag_list = [
+            Tag(
+                id   = 1,
+                name = 'nature',
+            ),
+            Tag(
+                id   = 2,
+                name = 'animal',
+            ),
+            Tag(
+                id   = 3,
+                name = 'food',
+            ),
+            Tag(
+                id   = 4,
+                name = 'car',
+            ),
+            Tag(
+                id   = 5,
+                name = 'korea',
+            ),
+            Tag(
+                id   = 6,
+                name = 'children',
+            ),
+            Tag(
+                id   = 7,
+                name = 'love',
+            ),
+            Tag(
+                id   = 8,
+                name = 'sports',
+            ),
+            Tag(
+                id   = 9,
+                name = 'movie',
+            ),
+            Tag(
+                id   = 10,
+                name = 'trip',
+            ),
+        ]
+        Tag.objects.bulk_create(tag_list)
+
+        tagboard_list = [
+            TagBoard(
+                id       = 1,
+                board_id = Board.objects.get(id=1).id,
+                tag_id   = Tag.objects.get(id=1).id,
+            ),
+            TagBoard(
+                id       = 2,
+                board_id = Board.objects.get(id=2).id,
+                tag_id   = Tag.objects.get(id=3).id,
+            ),
+        ]
+        TagBoard.objects.bulk_create(tagboard_list)
+
+    def tearDown(self):
+        User.objects.all().delete()
+        Board.objects.all().delete()
+        Tag.objects.all().delete()
+
+    def test_success_my_board_view_get_method(self):
+        client = Client()
+
+        result = [
+            {
+                "id": 1,
+                "user": "test1",
+                "title": "test title1",
+                "image_url": "test_url_1",
+                "point_color": "#e587a9",
+                "image_width": 1600,
+                "image_height": 900
+            },
+            {
+                "id": 2,
+                "user": "test1",
+                "title": "test title2",
+                "image_url": "test_url_2",
+                "point_color": "#bc80fc",
+                "image_width": 1600,
+                "image_height": 900
+            },
+        ]
+
+        headers  = {'HTTP_Authorization' : self.token1}
+        response = client.get('/boards/board/me', **headers)
+        self.assertEqual(response.json(), {'message' : result})
+        self.assertEqual(response.status_code, 200)
+
+    def test_fail_does_not_exist_my_board_view_get_method(self):
+        client = Client()
+
+        headers  = {'HTTP_Authorization' : self.token2}
+        response = client.get('/boards/board/me', **headers)
+        self.assertEqual(response.json(), {'message' : 'DOSE_NOT_EXIST_CREATE_BOARD'})
+        self.assertEqual(response.status_code, 404)

@@ -105,7 +105,7 @@ class PinListView(View):
     def get(self, request):
         OFFSET  = int(request.GET.get("offset", 0))
         LIMIT   = int(request.GET.get("limit", 25))
-        
+
         user   = request.user
         boards = user.pined_boards.all()[OFFSET:OFFSET+LIMIT]
 
@@ -126,3 +126,28 @@ class PinListView(View):
 
         return JsonResponse({"pined_boards" : results}, status=200)
 
+
+class MyBoardsView(View):
+    @login_decorator
+    def get(self, request):
+        user   = request.user
+
+        if not user.board_set.all().exists():
+            return JsonResponse({"message": "DOSE_NOT_EXIST_CREATE_BOARD"}, status=404)
+
+        boards = user.board_set.all().order_by("create_time")
+
+        result = [
+            {
+                "id"           : board.id,
+                "user"         : user.nickname,
+                "title"        : board.title,
+                "image_url"    : board.board_image_url,
+                "point_color"  : board.image_point_color,
+                "image_width"  : board.image_width,
+                "image_height" : board.image_height,
+            }
+            for board in boards
+        ]
+
+        return JsonResponse({"message": result}, status=200)
