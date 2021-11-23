@@ -64,7 +64,6 @@ class SignInView(View):
             return JsonResponse({"MESSAGE":"USER_DOES_NOT_EXIST"}, status=404)
 
 class Kakao:
-    # Class = Property(Data) + Method(Action)
     def __init__(self, access_token):
         self.access_token  = access_token
         self.user_info_api = "https://kapi.kakao.com/v2/user/me"

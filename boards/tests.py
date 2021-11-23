@@ -6,8 +6,9 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test                    import TestCase, Client
 from django.conf                    import settings
 
-from .models                        import Board, Tag, TagBoard, PinBoard, Comment
-from users.models                   import User
+from .models          import Board, Tag, TagBoard, PinBoard, Comment
+from users.models     import User
+from config.settings  import SECRET_KEY, ALGORITHM
 
 
 class BoardListViewTest(TestCase):
@@ -70,7 +71,7 @@ class BoardListViewTest(TestCase):
                 image_point_color = '#bc80fc',
                 image_width       = 1600,
                 image_height      = 900,   
-                user_id = User.objects.get(id=2).id,   
+                user_id           = User.objects.get(id=2).id,   
             ),
             Board(
                 id                = 3,
@@ -258,4 +259,90 @@ class BoardListViewTest(TestCase):
         headers                        = {'HTTP_Authorization' : self.token}
         response                       = client.post('/boards', board, **headers)
         self.assertEqual(response.json(), {'message' : 'KEY_ERROR'})
+        self.assertEqual(response.status_code, 400)
+
+
+class PinListTestView(TestCase):
+    def setUp(self):
+        user_list = [
+            User(
+                id = 1,
+                email             = "test1@kakao.com",
+                password          = '1q2w3e4r!',
+                nickname          = "test1",
+                profile_image_url = 'test_image_url1',
+                login_platform    = "kakao",
+                login_platform_id = "10001",
+                description       = 'hi',
+            ),
+            User(
+                id = 2,
+                email             = "test2@kakao.com",
+                password          = '1q2w3e4r!',
+                nickname          = "test2",
+                profile_image_url = 'test_image_url2',
+                login_platform    = "kakao",
+                login_platform_id = "10002",
+                description       = 'hi',
+            )
+        ]
+        User.objects.bulk_create(user_list)
+
+        board_list = [
+            Board(
+                id = 1,
+                title               = "test1",
+                description         = "TestDescription",
+                board_image_url     = "test_url_1",
+                source              = "test_source_1",
+                image_point_color   = "#e587a9",
+                image_width         = 1600,
+                image_height        = 900,
+                user_id             = 1
+            )
+        ]
+        Board.objects.bulk_create(board_list)
+
+        pinboard_list = [
+            PinBoard(
+                id       = 1,
+                user_id  = 1,
+                board_id = 1,
+            )
+        ]
+        PinBoard.objects.bulk_create(pinboard_list)
+        
+    def tearDown(self):
+        User.objects.all().delete()
+        Board.objects.all().delete()
+        PinBoard.objects.all().delete()
+
+    def test_success_pined_boards_list_view_for_mypage_get_method(self):
+        client  = Client()
+        access_token1= jwt.encode({"id" : 1}, SECRET_KEY, algorithm = ALGORITHM)
+        headers = {'HTTP_Authorization' : access_token1}
+        
+        results = [{
+            "id"                : 1,
+            "nickname"          : "test1",
+            "title"             : "test1",
+            "image_url"         : "test_url_1",
+            "point_color"       : "#e587a9",
+            "image_width"       : 1600,
+            "image_height"      : 900,
+        }]
+        
+        response = client.get("/boards/pinlist", **headers)
+        self.assertEqual(response.json(), {"pined_boards" : results})
+        self.assertEqual(response.status_code, 200)
+
+    def test_failure_pined_boards_list_view_for_mypage_get_method(self):
+        client  = Client()
+        access_token2= jwt.encode({"id" : 2}, SECRET_KEY, algorithm = ALGORITHM)
+        headers = {'HTTP_Authorization' : access_token2}
+        
+        results = []
+
+        response = client.get("/boards/pinlist", **headers)
+        self.assertEqual(response.json(), {"message" : "No Pin", "pined_boards" : results})
         self.assertEqual(response.status_code, 400)
