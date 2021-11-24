@@ -363,8 +363,8 @@ class PinListTestView(TestCase):
         headers = {'HTTP_Authorization' : access_token2}
 
         response = client.post("/boards/pin", {"board_id" : 1}, content_type='application/json', **headers)
-        self.assertEqual(response.json(), {"message" : "NO CONTENTS"})
-        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response.json(), {"message" : "NO_CONTENTS"})
+        self.assertEqual(response.status_code, 200)
 
 
 
