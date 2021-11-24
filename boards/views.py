@@ -114,7 +114,7 @@ class PinListView(View):
 
         if not created:
             pin_board.delete()
-            return JsonResponse({"message" : "NO CONTENTS"}, status = 204)
+            return JsonResponse({"message" : "NO_CONTENTS"}, status = 200)
 
         return JsonResponse({"message" : "CREATE_SUCCESS"}, status = 201)
 
