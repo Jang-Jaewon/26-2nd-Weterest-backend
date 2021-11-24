@@ -5,6 +5,7 @@ from unittest.mock                  import MagicMock, patch
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test                    import TestCase, Client
 from django.conf                    import settings
+from django.utils import timezone
 
 from .models          import Board, Tag, TagBoard, PinBoard, Comment
 from users.models     import User
@@ -522,4 +523,166 @@ class MyBoardsViewTest(TestCase):
         headers  = {'HTTP_Authorization' : self.token2}
         response = client.get('/boards/board/me', **headers)
         self.assertEqual(response.json(), {'message' : 'DOSE_NOT_EXIST_CREATE_BOARD'})
+        self.assertEqual(response.status_code, 404)
+
+
+class BoardDetailViewTest(TestCase):
+    maxDiff = None
+
+    def setUp(self):
+        user_list = [
+            User(
+                id                = 1,
+                email             = 'test1@kakao.com',
+                password          = '1q2w3e4r!',
+                nickname          = 'test_username1',
+                profile_image_url = 'test_image_url1',
+                login_platform    = 'kakao',
+                login_platform_id = '0000000000',
+                description       = 'hi',
+            ),
+            User(
+                id                = 2,
+                email             = 'test2@kakao.com',
+                password          = '1q2w3e4r!',
+                nickname          = 'test_username2',
+                profile_image_url = 'test_image_url2',
+                login_platform    = 'kakao',
+                login_platform_id = '1111111111',
+                description       = 'hi',
+            ),
+            User(
+                id                = 3,
+                email             = 'test3@kakao.com',
+                password          = '1q2w3e4r!',
+                nickname          = 'test_username3',
+                profile_image_url = 'test_image_url3',
+                login_platform    = 'kakao',
+                login_platform_id = '2222222222',
+                description       = 'hi',
+            )
+        ]
+        User.objects.bulk_create(user_list)
+
+        Board.objects.create(
+            id                = 1,
+            title             = 'test title1',
+            description       = 'test description1',        
+            board_image_url   = 'test_url_1',
+            source            = 'test1.com',
+            image_point_color = '#e587a9',
+            image_width       = 1600,
+            image_height      = 900,    
+            user_id           = User.objects.get(id=1).id,
+        )
+
+        tag_list = [
+            Tag(
+                id   = 1,
+                name = 'nature',
+            ),
+            Tag(
+                id   = 2,
+                name = 'animal',
+            ),
+            Tag(
+                id   = 3,
+                name = 'food',
+            ),
+            Tag(
+                id   = 4,
+                name = 'car',
+            ),
+            Tag(
+                id   = 5,
+                name = 'korea',
+            ),
+            Tag(
+                id   = 6,
+                name = 'children',
+            ),
+            Tag(
+                id   = 7,
+                name = 'love',
+            ),
+            Tag(
+                id   = 8,
+                name = 'sports',
+            ),
+            Tag(
+                id   = 9,
+                name = 'movie',
+            ),
+            Tag(
+                id   = 10,
+                name = 'trip',
+            ),
+        ]
+        Tag.objects.bulk_create(tag_list) 
+        
+        TagBoard.objects.create(
+            id = 1,
+            board_id = Board.objects.get(id=1).id,
+            tag_id   = Tag.objects.get(id=1).id,
+        )
+
+        comment_list = [
+            Comment(
+                user_id     = User.objects.get(id=2).id,
+                board_id    = Board.objects.get(id=1).id,
+                description = 'This is comment1',
+            ),
+            Comment(
+                user_id     = User.objects.get(id=3).id,
+                board_id    = Board.objects.get(id=1).id,
+                description = 'This is comment2',
+            ),
+        ]
+        Comment.objects.bulk_create(comment_list)    
+
+    def tearDown(self):
+        User.objects.all().delete()
+        Board.objects.all().delete()
+        Tag.objects.all().delete()
+        TagBoard.objects.all().delete()
+        Comment.objects.all().delete()
+
+    def test_success_board_detail_view_get_method(self):
+        client = Client()
+
+        result = {
+            "board_info": {
+                "id"              : 1,
+                "title"           : "test title1",
+                "description"     : "test description1",
+                "board_image_url" : "test_url_1",
+                "source"          : "test1.com",
+                "username"        : "test_username1",
+                "tag_id"          : 1,
+            },
+            "comments": [
+                {
+                    "id"                : 3,
+                    "username"          : "test_username2",
+                    "profile_image_url" : "test_image_url2",
+                    "description"       : "This is comment1",
+                },
+                {
+                    "id"                : 4,
+                    "username"          : "test_username3",
+                    "profile_image_url" : "test_image_url3",
+                    "description"       : "This is comment2",
+                },
+            ]
+        }
+
+        response = client.get('/boards/1')
+        
+        self.assertEqual(response.json(), {'message' : result})
+        self.assertEqual(response.status_code, 200)
+
+    def test_fail_board_detail_view_get_method(self):
+        client   = Client()
+        response = client.get('/boards/10000')
+        self.assertEqual(response.json(), {'message' : 'DOES_NOT_EXISTS'})
         self.assertEqual(response.status_code, 404)

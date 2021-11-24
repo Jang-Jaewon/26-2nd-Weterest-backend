@@ -9,7 +9,7 @@ from django.views      import View
 from django.db.models  import Q
 from django.conf       import settings
 
-from .models           import Board, Tag, PinBoard
+from .models           import Board, Tag, Comment, PinBoard
 from users.models      import User
 from core.utils        import login_decorator
 
@@ -169,3 +169,34 @@ class MyBoardsView(View):
 
         return JsonResponse({"message": result}, status=200)
 
+
+class BoardDetailView(View):
+    def get(self, request, board_id):
+        try:
+            board    = Board.objects.prefetch_related("comment_set", "comment_set__user").get(id = board_id)
+
+            result = {
+                "board_info" : {
+                    "id"              : board.id,
+                    "title"           : board.title,
+                    "description"     : board.description,
+                    "board_image_url" : board.board_image_url,
+                    "source"          : board.source,
+                    "username"        : board.user.nickname,
+                    "tag_id"          : board.tags.first().id
+                },
+                "comments"   : [
+                    {
+                        "id"                : comment.id,
+                        "username"          : comment.user.nickname,
+                        "profile_image_url" : comment.user.profile_image_url,
+                        "description"       : comment.description,
+                    }
+                    for comment in board.comment_set.all()
+                ]
+            }
+        
+            return JsonResponse({"message" : result}, status=200)
+
+        except Board.DoesNotExist:
+            return JsonResponse({"message" : "DOES_NOT_EXISTS"}, status=404)
