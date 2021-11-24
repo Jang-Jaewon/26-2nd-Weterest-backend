@@ -332,20 +332,39 @@ class PinListTestView(TestCase):
             "image_height"      : 900,
         }]
 
-        response = client.get("/boards/pinlist", **headers)
+        response = client.get("/boards/pin", **headers)
         self.assertEqual(response.json(), {"pined_boards" : results})
         self.assertEqual(response.status_code, 200)
 
     def test_failure_pined_boards_list_view_for_mypage_get_method(self):
         client  = Client()
-        access_token2= jwt.encode({"id" : 2}, SECRET_KEY, algorithm = ALGORITHM)
+        access_token2 = jwt.encode({"id" : 2}, SECRET_KEY, algorithm = ALGORITHM)
         headers = {'HTTP_Authorization' : access_token2}
 
         results = []
 
-        response = client.get("/boards/pinlist", **headers)
+        response = client.get("/boards/pin", **headers)
         self.assertEqual(response.json(), {"message" : "No Pin", "pined_boards" : results})
         self.assertEqual(response.status_code, 400)
+    
+    def test_success_create_new_pin(self):
+        client = Client()
+        access_token2 = jwt.encode({"id" : 2}, SECRET_KEY, algorithm = ALGORITHM)
+        headers = {'HTTP_Authorization' : access_token2}
+
+        response = client.post("/boards/pin", {"board_id" : 1}, content_type='application/json', **headers)
+        self.assertEqual(response.json(), {"message" : "CREATE_SUCCESS"})
+        self.assertEqual(response.status_code, 201)
+
+    def test_success_delete_pin(self):
+        client = Client()
+        access_token2 = jwt.encode({"id" : 1}, SECRET_KEY, algorithm = ALGORITHM)
+        headers = {'HTTP_Authorization' : access_token2}
+
+        response = client.post("/boards/pin", {"board_id" : 1}, content_type='application/json', **headers)
+        self.assertEqual(response.json(), {"message" : "NO CONTENTS"})
+        self.assertEqual(response.status_code, 204)
+
 
 
 class MyBoardsViewTest(TestCase):

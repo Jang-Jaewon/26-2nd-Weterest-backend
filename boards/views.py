@@ -9,7 +9,7 @@ from django.views      import View
 from django.db.models  import Q
 from django.conf       import settings
 
-from .models           import Board, Tag
+from .models           import Board, Tag, PinBoard
 from users.models      import User
 from core.utils        import login_decorator
 
@@ -102,6 +102,23 @@ class BoardListView(View):
 
 class PinListView(View):
     @login_decorator
+    def post(self, request):
+        data     = json.loads(request.body)
+        user_id  = request.user.id
+        board_id = data["board_id"]
+
+        pin_board, created = PinBoard.objects.get_or_create(
+            user_id  = user_id,
+            board_id = board_id
+        )
+
+        if not created:
+            pin_board.delete()
+            return JsonResponse({"message" : "NO CONTENTS"}, status = 204)
+
+        return JsonResponse({"message" : "CREATE_SUCCESS"}, status = 201)
+
+    @login_decorator
     def get(self, request):
         OFFSET  = int(request.GET.get("offset", 0))
         LIMIT   = int(request.GET.get("limit", 25))
@@ -151,3 +168,4 @@ class MyBoardsView(View):
         ]
 
         return JsonResponse({"message": result}, status=200)
+
