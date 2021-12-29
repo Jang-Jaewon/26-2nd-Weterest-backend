@@ -2,6 +2,7 @@ import json
 import random
 import boto3
 
+from PIL import Image
 from uuid              import uuid4
 
 from django.http       import JsonResponse
@@ -49,13 +50,12 @@ class BoardListView(View):
     @login_decorator
     def post(self, request):
         try:
-            title             = request.POST['title']
-            description       = request.POST['description']
-            source            = request.POST['source']
-            image             = request.FILES['filename']
-            colors            = ['#FFF0E5', '#66C4FF', '#C3C5CB', '#AEE938', '#FFFAE5', '#FFF5FF', '#BE1809', '#FF8C00', '#E0E0E0', '#3A10E5']
-            image_width       = 252
-            image_height      = [252, 200, 500]
+            title         = request.POST['title']
+            description   = request.POST['description']
+            source        = request.POST['source']
+            image         = request.FILES['filename']
+            width, height = Image.open(image).size
+            colors        = ['#FFF0E5', '#66C4FF', '#C3C5CB', '#AEE938', '#FFFAE5', '#FFF5FF', '#BE1809', '#FF8C00', '#E0E0E0', '#3A10E5']
             
             upload_key        = str(uuid4().hex[:10]) + image.name
 
@@ -78,7 +78,6 @@ class BoardListView(View):
             image_point_color = random.choice(colors)
             user              = User.objects.get(id=request.user.id)
             tag_id            = random.randint(1,10)
-            image_height      = random.choice(image_height)
 
             board = Board.objects.create(
                 title             = title,
@@ -86,8 +85,8 @@ class BoardListView(View):
                 board_image_url   = board_image_url,
                 source            = source,
                 image_point_color = image_point_color,
-                image_width       = image_width,
-                image_height      = image_height,
+                image_width       = width,
+                image_height      = height,
                 user              = user,
             )
             tag = Tag.objects.get(id=tag_id)
@@ -148,6 +147,48 @@ class MyBoardsView(View):
     @login_decorator
     def get(self, request):
         user   = request.user
+
+        if not user.board_set.all().exists():
+            return JsonResponse({"message": "DOSE_NOT_EXIST_CREATE_BOARD"}, status=404)
+
+        boards = user.board_set.all().order_by("create_time")
+
+        result = [
+            {
+                "id"           : board.id,
+                "user"         : user.nickname,
+                "title"        : board.title,
+                "image_url"    : board.board_image_url,
+                "point_color"  : board.image_point_color,
+                "image_width"  : board.image_width,
+                "image_height" : board.image_height,
+            }
+            for board in boards
+        ]
+
+        return JsonResponse({"message": result}, status=200)
+
+    @login_decorator
+    def delete(self, request):
+        user     = request.user
+        data     = json.loads(request.body)
+        board_id = data["board_id"]
+
+        board_obj = Board.objects.get(id=board_id)
+        board_imag = board_obj.board_image_url
+        file = board_imag.split('/')[-1]
+
+        s3_client = boto3.client(
+             "s3",
+            aws_access_key_id     = settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key = settings.AWS_SECRET_ACCESS_KEY
+        )        
+
+        s3_client.delete_object(
+            Bucket = settings.AWS_STORAGE_BUCKET_NAME, 
+            Key = file
+        )
+        board_obj.delete()
 
         if not user.board_set.all().exists():
             return JsonResponse({"message": "DOSE_NOT_EXIST_CREATE_BOARD"}, status=404)
